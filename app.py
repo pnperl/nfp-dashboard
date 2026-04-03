@@ -1,84 +1,95 @@
 import streamlit as st
 import pandas as pd
-from engine import NFPEngine
-from backtester import NFPBacktester
-from db import Database
-from data_fetcher import fetch_nfp_data
-from optimizer import StrategyOptimizer
 import yfinance as yf
+from engine import NFPEngine
+from db import Database
+from data_fetcher import fetch_latest_nfp
+from utils import evaluate_signal_strength, compute_performance, suggest_trade
 
-st.set_page_config(layout="wide")
-st.title("🚀 NFP PRO TRADING DASHBOARD")
+st.set_page_config(layout="wide", page_title="NFP Quant Dashboard")
 
 engine = NFPEngine()
 db = Database()
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["Live Signal", "Backtest", "Live Market", "Optimization"]
-)
+st.title("🚀 NFP QUANT TRADING DASHBOARD")
 
-# ---------------- LIVE SIGNAL ----------------
-with tab1:
+# -------- AUTO FETCH --------
+if st.button("🔄 Fetch Latest NFP"):
+    nfp = fetch_latest_nfp()
+
+    if nfp:
+        if not db.exists(nfp["date"]):
+            signal = engine.generate_signal(nfp["actual"], nfp["forecast"])
+
+            db.insert_signal({
+                "date": nfp["date"],
+                "actual": nfp["actual"],
+                "forecast": nfp["forecast"],
+                "surprise": signal["surprise"],
+                "action": signal["action"]
+            })
+
+            st.success("NFP stored + signal generated")
+        else:
+            st.info("Already exists")
+
+# -------- LAYOUT --------
+col1, col2 = st.columns([1, 2])
+
+# -------- SIGNAL PANEL --------
+with col1:
+    st.subheader("📊 Manual Input")
+
     actual = st.number_input("Actual", value=50000)
     forecast = st.number_input("Forecast", value=60000)
 
     if st.button("Generate Signal"):
         signal = engine.generate_signal(actual, forecast)
 
+        st.metric("Surprise", signal["surprise"])
         st.write(signal)
 
-        if signal["action"]:
-            st.success(f"{signal['action']} EURUSD")
+        strength = evaluate_signal_strength(signal)
+
+        if strength == "HIGH_CONFIDENCE":
+            st.success("🔥 HIGH CONFIDENCE TRADE")
+        elif strength == "AVOID":
+            st.error("⚠️ HIGH VOLATILITY")
         else:
-            st.warning("No Trade")
+            st.warning("Normal Setup")
 
-        db.insert_signal({
-            "date": str(pd.Timestamp.now()),
-            "actual": actual,
-            "forecast": forecast,
-            "surprise": signal["surprise"],
-            "action": signal["action"]
-        })
-history = db.fetch_all()
+        df = yf.download("EURUSD=X", period="1d", interval="1m")
 
-if not history.empty:
-    st.dataframe(history)
-# ---------------- BACKTEST ----------------
-with tab2:
-    file = st.file_uploader("Upload Data", type=["csv"])
+        if not df.empty:
+            price = df["Close"].iloc[-1]
+            trade = suggest_trade(price, signal)
 
-    if file:
-        data = pd.read_csv(file)
-        bt = NFPBacktester(engine)
-        metrics = bt.run_backtest(data)
+            if trade:
+                st.markdown("### 🎯 Trade Setup")
+                st.write(trade)
 
-        st.write(metrics)
-
-        if "results_df" in metrics:
-            st.line_chart(metrics["results_df"]["equity"])
-
-# ---------------- LIVE MARKET ----------------
-with tab3:
-    st.subheader("EURUSD Live Chart")
+# -------- LIVE MARKET --------
+with col2:
+    st.subheader("📈 EURUSD Live")
 
     df = yf.download("EURUSD=X", period="1d", interval="1m")
 
     if not df.empty:
         st.line_chart(df["Close"])
 
-# ---------------- OPTIMIZATION ----------------
-with tab4:
-    st.subheader("Strategy Optimization")
+# -------- HISTORY --------
+st.subheader("📚 Trade History")
 
-    file = st.file_uploader("Upload Data for Optimization", type=["csv"], key="opt")
+history = db.fetch_all()
 
-    if file:
-        data = pd.read_csv(file)
+if not history.empty:
+    st.dataframe(history)
 
-        bt = NFPBacktester(engine)
-        optimizer = StrategyOptimizer(engine, bt)
+    perf = compute_performance(history)
 
-        params, result = optimizer.optimize(data)
+    if perf:
+        col1, col2, col3 = st.columns(3)
 
-        st.write("Best Params:", params)
-        st.write("Best Result:", result)
+        col1.metric("Trades", perf["total_trades"])
+        col2.metric("Win Rate", f"{perf['win_rate']}%")
+        col3.metric("Avg Win", perf["avg_win"])
