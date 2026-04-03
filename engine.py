@@ -1,7 +1,4 @@
 class NFPEngine:
-    def __init__(self):
-        pass
-
     def calculate_surprise(self, actual, forecast):
         return actual - forecast
 
