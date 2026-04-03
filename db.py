@@ -1,8 +1,12 @@
 import sqlite3
 import pandas as pd
+import os
 
 class Database:
     def __init__(self, db_path="data/nfp.db"):
+        # ✅ Ensure folder exists
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._create_tables()
 
