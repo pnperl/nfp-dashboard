@@ -39,7 +39,10 @@ with tab1:
             "surprise": signal["surprise"],
             "action": signal["action"]
         })
+history = db.fetch_all()
 
+if not history.empty:
+    st.dataframe(history)
 # ---------------- BACKTEST ----------------
 with tab2:
     file = st.file_uploader("Upload Data", type=["csv"])
