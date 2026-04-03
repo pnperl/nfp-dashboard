@@ -3,10 +3,7 @@ import pandas as pd
 
 def fetch_latest_nfp():
     url = "https://api.tradingeconomics.com/calendar"
-    params = {
-        "c": "guest:guest",
-        "country": "United States"
-    }
+    params = {"c": "guest:guest", "country": "United States"}
 
     try:
         res = requests.get(url, params=params)
