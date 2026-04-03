@@ -1,6 +1,5 @@
 import requests
 import pandas as pd
-from datetime import datetime
 
 def fetch_latest_nfp():
     url = "https://api.tradingeconomics.com/calendar"
@@ -11,20 +10,19 @@ def fetch_latest_nfp():
 
     try:
         res = requests.get(url, params=params)
-        data = pd.DataFrame(res.json())
+        df = pd.DataFrame(res.json())
 
-        # Filter NFP
-        data = data[data["Event"].str.contains("Non Farm Payrolls", case=False, na=False)]
+        df = df[df["Event"].str.contains("Non Farm Payrolls", case=False, na=False)]
 
-        if data.empty:
+        if df.empty:
             return None
 
-        latest = data.iloc[0]
+        latest = df.iloc[0]
 
         return {
             "date": latest["Date"],
-            "actual": latest["Actual"],
-            "forecast": latest["Forecast"]
+            "actual": float(latest["Actual"]),
+            "forecast": float(latest["Forecast"])
         }
 
     except:
