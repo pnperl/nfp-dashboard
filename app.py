@@ -2,14 +2,14 @@ import streamlit as st
 import pandas as pd
 from engine import NFPEngine
 from backtester import NFPBacktester
-from storage import DriveStorage
+from storage import LocalStorage
 
 st.set_page_config(layout="wide")
 
 st.title("📊 NFP Trading Dashboard")
 
 engine = NFPEngine()
-storage = DriveStorage()
+storage = LocalStorage()
 
 tab1, tab2, tab3 = st.tabs(["Live Signal", "Backtest", "History"])
 
@@ -17,8 +17,8 @@ tab1, tab2, tab3 = st.tabs(["Live Signal", "Backtest", "History"])
 with tab1:
     st.header("Live NFP Signal")
 
-    actual = st.number_input("Actual", value=50000)
-    forecast = st.number_input("Forecast", value=60000)
+    actual = st.number_input("Actual NFP", value=50000)
+    forecast = st.number_input("Forecast NFP", value=60000)
 
     if st.button("Generate Signal"):
         signal = engine.generate_signal(actual, forecast)
@@ -26,7 +26,6 @@ with tab1:
         st.metric("Surprise", signal["surprise"])
         st.write(signal)
 
-        # ✅ Dashboard Alert System
         if signal["action"]:
             st.success(f"🚀 TRADE ALERT: {signal['action']} {signal['pair']}")
         elif signal["bias"] == "HIGH_VOLATILITY":
@@ -34,7 +33,6 @@ with tab1:
         else:
             st.warning("⏸️ NO TRADE ZONE")
 
-        # Save to history
         df = pd.DataFrame([{
             "actual": actual,
             "forecast": forecast,
@@ -60,8 +58,6 @@ with tab2:
 
         if "results_df" in metrics:
             st.line_chart(metrics["results_df"]["equity"])
-
-            # Save results
             storage.save(metrics["results_df"])
 
 # ---------------- HISTORY ----------------
