@@ -13,5 +13,9 @@ class Database:
         self.client.table("signals").insert(data).execute()
 
     def fetch_all(self):
-        response = self.client.table("signals").select("*").execute()
-        return pd.DataFrame(response.data)
+        res = self.client.table("signals").select("*").execute()
+        return pd.DataFrame(res.data)
+
+    def exists(self, date):
+        res = self.client.table("signals").select("id").eq("date", date).execute()
+        return len(res.data) > 0
