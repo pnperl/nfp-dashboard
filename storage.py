@@ -1,9 +1,10 @@
 import pandas as pd
 import os
 
-class DriveStorage:
-    def __init__(self, path="/content/drive/MyDrive/nfp_dashboard/cache.csv"):
+class LocalStorage:
+    def __init__(self, path="data/cache.csv"):
         self.path = path
+        os.makedirs("data", exist_ok=True)
 
     def save(self, new_data: pd.DataFrame):
         if os.path.exists(self.path):
